@@ -10,8 +10,6 @@ import copy
 from utils.similarity import cka, gram_linear
 from utils.train_utils import get_model
 
-
-
 class DatasetSplit(Dataset):
     def __init__(self, dataset, idxs):
         self.dataset = dataset

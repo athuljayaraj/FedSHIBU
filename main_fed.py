@@ -17,6 +17,8 @@ import os
 from timeit import default_timer as timer
 from datetime import timedelta
 
+import wandb
+
 from utils.weight_utils import get_weights_copy
 
 def set_seed(args):
@@ -48,6 +50,10 @@ if __name__ == '__main__':
     # parse args
     args = args_parser()
     assert args.local_upt_part in ['body', 'head', 'full'] and args.aggr_part in ['body', 'head', 'full']
+
+
+    # init wandb
+    wandb.init(project="fedshibu", entity="hesl")
 
     # Seed
     set_seed(args)
@@ -172,6 +178,9 @@ if __name__ == '__main__':
 
         if (iter + 1) % args.test_freq == 0:
             acc_test, loss_test = test_img_local_all(net_local_list, args, dataset_test, dict_users_test, return_all=False)
+
+            wandb.log({"test accuracy": acc_test})
+            wandb.log({"test loss": loss_test})
                         
             print('Round {:3d}, Average loss {:.3f}, Test loss {:.3f}, Test accuracy: {:.2f}'.format(
                 iter, loss_avg, loss_test, acc_test))
