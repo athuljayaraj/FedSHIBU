@@ -2,14 +2,13 @@
 # -*- coding: utf-8 -*-
 # Python version: 3.6
 
+from collections import UserDict
 import torch
 from torch import nn
 from torch.utils.data import DataLoader, Dataset
-from tqdm import tqdm
-import math
-import pdb
 import copy
-from torch.optim import Optimizer
+from utils.similarity import cka, gram_linear
+from utils.train_utils import get_model
 
 
 
@@ -27,13 +26,54 @@ class DatasetSplit(Dataset):
 
     
 class LocalUpdate(object):
-    def __init__(self, args, dataset=None, idxs=None, pretrain=False):
+    def __init__(self, args, dataset=None, idxs=None, pretrain=False, validation_dataset=None):
         self.args = args
         self.loss_func = nn.CrossEntropyLoss()
         self.selected_clients = []
         self.ldr_train = DataLoader(DatasetSplit(dataset, idxs), batch_size=self.args.local_bs, shuffle=True)
         self.pretrain = pretrain
 
+    def shibu_aggregate(self, set_of_w_local):
+        print('Doing SHIBU aggregation')
+        local_model = get_model(self.args)
+        client_representations_tensor = []
+        for w_local in set_of_w_local:
+            local_model.load_state_dict(w_local)
+            representations = torch.empty(0, 64).to(self.args.device) # TODO remove hardcoded 256
+            for idx, (data, target) in enumerate(self.ldr_train):
+                representation = local_model.extract_features(data.to(self.args.device))
+                representations = torch.cat([representations, representation], dim=0)
+                break # TODO fix CUDA memory leak and remove break
+            client_representations_tensor.append(representations)
+        client_representations_tensor = torch.stack(client_representations_tensor, dim=0).to(self.args.device)
+
+        print(client_representations_tensor.shape)
+
+        similarity_matrix = torch.zeros(self.args.num_users, self.args.num_users)
+
+        for idx1 in range(len(client_representations_tensor)):
+            for idx2 in range(idx1, len(client_representations_tensor)):
+                similarity_matrix[idx1][idx2] = cka(gram_x=gram_linear(client_representations_tensor[idx1]), gram_y=gram_linear(client_representations_tensor[idx2]))
+                similarity_matrix[idx2][idx1] = similarity_matrix[idx1][idx2]
+
+        normalized_similarity_matrix = torch.clone(similarity_matrix)
+
+        client_wise_updated_weights = {}
+
+        for user_idx in range(self.args.num_users):
+            amin, amax = min(similarity_matrix[user_idx]), max(similarity_matrix[user_idx])
+            for i, val in enumerate(similarity_matrix[user_idx]):
+                normalized_similarity_matrix[user_idx][i] = (val - amin) / (amax - amin)
+
+            updated_w_glob = get_model(self.args).state_dict()
+            for idx, w_local in enumerate(set_of_w_local):
+                for k in w_local.keys():
+                    updated_w_glob[k] += (normalized_similarity_matrix[user_idx][idx] * w_local[k])
+
+            client_wise_updated_weights[user_idx] = updated_w_glob
+        
+        return client_wise_updated_weights
+        
     def train(self, net, body_lr, head_lr, idx=-1, local_eps=None):
         net.train()
 

@@ -78,7 +78,7 @@ def iid(dataset, num_users, server_data_ratio):
     dict_users, all_idxs = {}, [i for i in range(len(dataset))]
     
     if server_data_ratio > 0.0:
-        dict_users['server'] = set(np.random.choice(all_idxs, int(len(dataset)*server_data_ratio), replace=False))
+        dict_users[-1] = list(np.random.choice(all_idxs, int(len(dataset)*server_data_ratio), replace=False))
     
     for i in range(num_users):
         dict_users[i] = set(np.random.choice(all_idxs, num_items, replace=False))
@@ -140,7 +140,7 @@ def noniid(dataset, num_users, shard_per_user, server_data_ratio, rand_set_all=[
     assert(len(set(list(test))) == len(dataset))
 
     if server_data_ratio > 0.0:
-        dict_users['server'] = set(np.random.choice(all_idxs, int(len(dataset)*server_data_ratio), replace=False))
+        dict_users[-1] = list(np.random.choice(all_idxs, int(len(dataset)*server_data_ratio), replace=False))
     
     return dict_users, rand_set_all
 

@@ -1,7 +1,10 @@
+from utils.similarity import *
 from torchvision import datasets, transforms
-from models.Nets import CNNCifar, MobileNetCifar
+from models.Nets import CNNCifar, MobileNetCifar, CNNMnist
 from models.ResNet import ResNet18, ResNet50
 from utils.sampling import iid, noniid, iid_unbalanced, noniid_unbalanced
+from torch.nn import Module
+from keras.preprocessing import image
 
 trans_mnist = transforms.Compose([transforms.ToTensor(),
                                   transforms.Normalize((0.1307,), (0.3081,))])
@@ -89,6 +92,17 @@ def get_data(args, env='fed'):
                 exit('Error: unrecognized dataset')
 
         return dataset_train, dataset_test, dict_users_train, dict_users_test
+
+def get_server_eval_dataset(args):
+    print('Getting server evaluation dataset')
+    pass
+
+def similarity_matrix(model, dataset):
+    print('Checking similarity of matrix')
+    # linear_results = [] # linear output from model
+    # global_model = get_model(args)
+    print()
+
 
 def get_model(args):
     if args.model == 'cnn' and args.dataset in ['cifar10', 'cifar100']:

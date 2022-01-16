@@ -70,6 +70,9 @@ def args_parser():
     parser.add_argument('--head_lr', type=float, default=None, help="learning rate for the head of the model")
     parser.add_argument('--body_m', type=float, default=None, help="momentum for the body of the model")
     parser.add_argument('--head_m', type=float, default=None, help="momentum for the head of the model")
+
+    # activate shibu mode
+    parser.add_argument('--shibu', action='store_true', help='use shibu aggregation')
         
     args = parser.parse_args()
     return args

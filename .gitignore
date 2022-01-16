@@ -1,3 +1,9 @@
+*.pt
+
+.vscode/
+data/
+save/
+
 .idea/
 
 # Byte-compiled / optimized / DLL files
