@@ -54,22 +54,42 @@ class LocalUpdate(object):
                 similarity_matrix[idx1][idx2] = cka(gram_x=gram_linear(client_representations_tensor[idx1]), gram_y=gram_linear(client_representations_tensor[idx2]))
                 similarity_matrix[idx2][idx1] = similarity_matrix[idx1][idx2]
 
+        normalized_similarity_matrix = self.normalize(similarity_matrix)
+        client_wise_updated_weights = self.weighted_average(set_of_w_local, normalized_similarity_matrix)
+        
+        return client_wise_updated_weights
+
+    def normalize(self, similarity_matrix):
         normalized_similarity_matrix = torch.clone(similarity_matrix)
-
-        client_wise_updated_weights = {}
-
         for user_idx in range(self.args.num_users):
             amin, amax = min(similarity_matrix[user_idx]), max(similarity_matrix[user_idx])
             for i, val in enumerate(similarity_matrix[user_idx]):
                 normalized_similarity_matrix[user_idx][i] = (val - amin) / (amax - amin)
+        return normalized_similarity_matrix
 
+    def weighted_average(self, set_of_w_local, similarity_matrix):
+        client_wise_updated_weights = {}
+        for user_idx in range(self.args.num_users):
             updated_w_glob = get_model(self.args).state_dict()
             for idx, w_local in enumerate(set_of_w_local):
                 for k in w_local.keys():
-                    updated_w_glob[k] += (normalized_similarity_matrix[user_idx][idx] * w_local[k])
+                    updated_w_glob[k] += (similarity_matrix[user_idx][idx] * w_local[k])
 
             client_wise_updated_weights[user_idx] = updated_w_glob
-        
+            
+        return client_wise_updated_weights
+
+    def top_k_average(self, set_of_w_local, similarity_matrix, k=3):
+        client_wise_updated_weights = {}
+        for user_idx in range(self.args.num_users):
+            updated_w_glob = get_model(self.args).state_dict()
+            top_k_similarity = torch.topk(similarity_matrix[user_idx], k+1)
+            for idx in top_k_similarity[1][1:]:
+                for key in set_of_w_local[idx].keys():
+                    updated_w_glob[key] += (set_of_w_local[idx][key]/k)
+
+            client_wise_updated_weights[user_idx] = updated_w_glob
+            
         return client_wise_updated_weights
         
     def train(self, net, body_lr, head_lr, idx=-1, local_eps=None):
