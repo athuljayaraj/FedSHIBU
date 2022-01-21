@@ -73,6 +73,8 @@ def args_parser():
 
     # activate shibu mode
     parser.add_argument('--shibu', action='store_true', help='use shibu aggregation')
+    parser.add_argument('--k', type=int, default=3, help='number of clients to consider for shibu aggregation')
+
         
     args = parser.parse_args()
     return args

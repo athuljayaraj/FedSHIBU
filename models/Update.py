@@ -21,7 +21,6 @@ class DatasetSplit(Dataset):
     def __getitem__(self, item):
         image, label = self.dataset[self.idxs[item]]
         return image, label
-
     
 class LocalUpdate(object):
     def __init__(self, args, dataset=None, idxs=None, pretrain=False, validation_dataset=None):
@@ -37,7 +36,7 @@ class LocalUpdate(object):
         client_representations_tensor = []
         for w_local in set_of_w_local:
             local_model.load_state_dict(w_local)
-            representations = torch.empty(0, 64).to(self.args.device) # TODO remove hardcoded 256
+            representations = torch.empty(0, 64).to(self.args.device) # TODO remove hardcoded argument in torch.empty
             for idx, (data, target) in enumerate(self.ldr_train):
                 representation = local_model.extract_features(data.to(self.args.device))
                 representations = torch.cat([representations, representation], dim=0)
@@ -79,17 +78,15 @@ class LocalUpdate(object):
             
         return client_wise_updated_weights
 
-    def top_k_average(self, set_of_w_local, similarity_matrix, k=3):
+    def top_k_average(self, set_of_w_local, similarity_matrix):
         client_wise_updated_weights = {}
         for user_idx in range(self.args.num_users):
             updated_w_glob = get_model(self.args).state_dict()
-            top_k_similarity = torch.topk(similarity_matrix[user_idx], k+1)
+            top_k_similarity = torch.topk(similarity_matrix[user_idx], self.args.k+1)
             for idx in top_k_similarity[1][1:]:
                 for key in set_of_w_local[idx].keys():
-                    updated_w_glob[key] += (set_of_w_local[idx][key]/k)
-
+                    updated_w_glob[key] += (set_of_w_local[idx][key]/self.args.k)
             client_wise_updated_weights[user_idx] = updated_w_glob
-            
         return client_wise_updated_weights
         
     def train(self, net, body_lr, head_lr, idx=-1, local_eps=None):
@@ -323,7 +320,6 @@ class LocalUpdateFedRep(object):
 
         return net.state_dict()
 
-    
 class LocalUpdateFedProx(object):
     def __init__(self, args, dataset=None, idxs=None, pretrain=False):
         self.args = args
@@ -369,8 +365,7 @@ class LocalUpdateFedProx(object):
             epoch_loss.append(sum(batch_loss)/len(batch_loss))
             
         return net.state_dict(), sum(epoch_loss) / len(epoch_loss) 
-    
-    
+
 class LocalUpdateDitto(object):
     def __init__(self, args, dataset=None, idxs=None):
         self.args = args
@@ -420,5 +415,3 @@ class LocalUpdateDitto(object):
                 batch_loss.append(loss.item())
             epoch_loss.append(sum(batch_loss)/len(batch_loss))
         return net.state_dict(), sum(epoch_loss) / len(epoch_loss)
-
-    
